@@ -12,18 +12,48 @@ set -E
 # shellcheck source=./logging.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/logging.sh"
 
+# Detects whether the current shell is Bash.
+# Behavior:
+#   - Returns success (exit 0) when BASH_VERSION is set.
+#   - Returns failure (exit 1) otherwise.
+#
+# Usage:
+#   if shelia::shell::is_bash; then
+#     ...
+#   fi
 function shelia::shell::is_bash() {
   [[ -n "${BASH_VERSION:-}" ]]
 }
 
+# Prints a function name from the Bash call stack (FUNCNAME).
+# Details:
+#   - Index defaults to 1 (the caller of the function that invoked this helper).
+#   - Use 0 for the current function; larger indexes walk further up the stack.
+#
+# Usage:
+#   printf '%s: error\n' "$(shelia::shell::function_name)" >&2
+#
+# Example:
+#   # From inside foo, shelia::shell::function_name 1 prints the name of foo's caller.
 function shelia::shell::function_name() {
   local index="${1:-1}"
   printf '%s' "${FUNCNAME[$index]:-}"
 }
 
-# Idempotent lib module load (sets _SHELIA_LIB_<ID>_LOADED). Call after sourcing this file:
+# Idempotent guard for sourcing a lib submodule: sets __SHELIA_LIB_<ID>_LOADED the first time only.
+# Rules:
+#   - Module id must be non-empty and use only A-Z, 0-9, and underscore.
+#   - Returns 0 the first time the module is registered; returns 1 if it was already loaded.
+#   - On duplicate load, callers typically follow with `return 0` to skip re-execution.
+#   - Returns 1 and prints to stderr if the module id is missing or invalid.
+#
+# Usage:
+#   # shellcheck source=./other.sh
+#   source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/other.sh"
+#   shelia::shell::begin_module OTHER || return 0
+#
+# Example:
 #   shelia::shell::begin_module CONFIG || return 0
-# Returns 1 if the module was already loaded (caller should `return 0`).
 function shelia::shell::begin_module() {
   local mid="$1"
   if [[ -z "$mid" ]]; then
@@ -44,6 +74,13 @@ function shelia::shell::begin_module() {
   return 0
 }
 
+# Verifies that the script is running under Bash 4.3 or newer.
+# On failure:
+#   - Exits via shelia::logging::error if BASH_VERSION is unset (not Bash).
+#   - Exits if the major/minor version is below 4.3.
+#
+# Usage:
+#   shelia::shell::check_bash_version
 function shelia::shell::check_bash_version() {
   local required_smallest_version="4.3"
 
@@ -61,19 +98,41 @@ function shelia::shell::check_bash_version() {
   fi
 }
 
+# Ensures each named executable exists on PATH before proceeding.
+# Behavior:
+#   - Logs via shelia::logging::error for each missing command and returns 1 after checking all commands.
+#   - Returns 0 when every command is available.
+#
+# Usage:
+#   shelia::shell::check_requirements git curl jq || exit 1
+#
+# Example:
+#   shelia::shell::check_requirements sed awk
 function shelia::shell::check_requirements() {
   local required_commands=("$@")
+  local missing=0
 
   for cmd in "${required_commands[@]}"; do
     if ! command -v "$cmd" &>/dev/null; then
       shelia::logging::error "Required command '$cmd' is not installed or not available in PATH. " \
         "Please install it and try again."
-      return 1
+      missing=1
     fi
   done
+  if [[ $missing -ne 0 ]]; then
+    return 1
+  fi
   return 0
 }
 
+# Runs a command string with eval, prints stdout/stderr to the terminal, and appends the same stream to a log file.
+# Arguments and return:
+#   - Arguments: (1) command string, (2) log file path, (3) error summary message, (4) success message.
+#   - Creates the log file's parent directory when possible (mkdir -p, failures ignored).
+#   - Returns 0 only if both the evaluated command and tee succeed; otherwise logs errors and returns 1.
+#
+# Usage:
+#   shelia::shell::execute_command "$cmd" "/path/to/run.log" "Step failed" "Step completed"
 function shelia::shell::execute_command() {
   local command="$1"
   local SHELIA_LOG_FILE="$2"
@@ -106,6 +165,17 @@ function shelia::shell::execute_command() {
   return 1
 }
 
+# Strips leading and trailing whitespace from each argument.
+# Details:
+#   - Uses sed with [[:space:]] so spaces, tabs, and line breaks at the ends are removed.
+#   - Prints all trimmed values as one space-separated line (same word-splitting pattern as echo "${array[@]}").
+#
+# Usage:
+#   out=$(shelia::shell::trim_whitespaces "$a" "$b")
+#
+# Example:
+#   shelia::shell::trim_whitespaces "  hello " $'  world\t'
+#   # Output: hello world
 function shelia::shell::trim_whitespaces() {
   local result=()
   for value in "$@"; do
@@ -114,6 +184,35 @@ function shelia::shell::trim_whitespaces() {
   echo "${result[@]}"
 }
 
+# Escapes special characters in a string for safe use as the replacement part in a sed 's|pattern|REPLACEMENT|g' command.
+# It escapes:
+#   - backslashes (\) -> \\
+#   - ampersands (&)  -> \&
+#   - pipe characters (|) -> \| (the default delimiter used in this project's sed expressions)
+#
+# Usage:
+#   repl_val=$(shelia::shell::escape_sed_replacement "$unsafe_string")
+#   sed -e "s|pattern|$repl_val|g"
+#
+# Example:
+#   input="refs/heads/feature|bug&fix"
+#   safe=$(shelia::shell::escape_sed_replacement "$input")
+#   # Output: refs/heads/feature\|bug\&fix
+function shelia::shell::escape_sed_replacement() {
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/&/\\&/g' -e 's/|/\\|/g'
+}
+
+# Invokes another shell function by name and interprets its stdout.
+# Behavior:
+#   - If stdout is a signed integer string, that value becomes the exit status (return).
+#   - Otherwise stdout is echoed so the caller can capture it with command substitution.
+#
+# Usage:
+#   out=$(shelia::shell::decorator::enter_function my_func arg1 arg2)
+#
+# Example:
+#   # If my_func prints "42", this returns exit code 42 with no stdout.
+#   # If my_func prints "ok", this echoes "ok".
 function shelia::shell::decorator::enter_function() {
   local function_name="$1"
   shift 1
@@ -127,6 +226,19 @@ function shelia::shell::decorator::enter_function() {
   fi
 }
 
+# Prompts on the terminal for yes or no, with an optional default when the user sends an empty line.
+# Arguments and return:
+#   - First argument: prompt text (default "Continue?").
+#   - Second argument: default answer "y" or "n" (default "n"); controls [Y/n] versus [y/N].
+#   - Returns 0 for yes, 1 for no. Prefers /dev/tty for input when stdin is not a TTY.
+#
+# Usage:
+#   if shelia::shell::prompt_yes_no "Overwrite?" n; then
+#     ...
+#   fi
+#
+# Example:
+#   shelia::shell::prompt_yes_no "Continue?" y
 function shelia::shell::prompt_yes_no() {
   local prompt="${1:-Continue?}"
   local default="${2:-n}"
