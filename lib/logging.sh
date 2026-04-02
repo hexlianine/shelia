@@ -4,6 +4,11 @@
 [[ -n "${__SHELIA_LIB_LOGGING_LOADED:-}" ]] && return 0
 __SHELIA_LIB_LOGGING_LOADED=1
 
+# Version check: logging.sh requires Bash 3.0+
+# shellcheck source=./bootstrap.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bootstrap.sh"
+shelia::bootstrap::require_bash_version "logging.sh" "$__SHELIA_BASH_LOGGING_MIN_MAJOR" "$__SHELIA_BASH_LOGGING_MIN_MINOR"
+
 # shellcheck source=./color.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/color.sh"
 
@@ -34,7 +39,7 @@ function shelia::logging::construct_backtrace() {
   while [[ $i -lt ${#FUNCNAME[@]} ]]; do
     local func_name="${FUNCNAME[$i]}"
     local source_file="${BASH_SOURCE[$i]}"
-    local line_number="${BASH_LINENO[$((i-1))]}"
+    local line_number="${BASH_LINENO[$((i - 1))]}"
 
     if [[ "$func_name" != "shelia::logging::construct_backtrace" ]]; then
       if [[ -n "$backtrace" ]]; then

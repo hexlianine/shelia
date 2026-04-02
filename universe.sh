@@ -5,6 +5,12 @@
 
 __SHELIA_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" || exit 1
 
+# Re-exec with a compliant Bash (4.3+) if the current shell is too old.
+# Must be sourced before any other lib so the re-exec happens at process start.
+# shellcheck source=lib/bootstrap.sh
+source "${__SHELIA_HOME}/lib/bootstrap.sh"
+shelia::bootstrap::ensure "${BASH_SOURCE[0]}" "$@"
+
 # shellcheck source=lib/shell.sh
 source "${__SHELIA_HOME}/lib/shell.sh"
 # shellcheck source=lib/logging.sh

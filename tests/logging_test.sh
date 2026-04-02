@@ -107,7 +107,7 @@ test_error_handler_exits_and_logs() {
     shelia::logging::log() { printf '%s' "$1"; }
     false
     error_handler 123
-  ) )
+  ))
   exit_code=$?
 
   shelia::test::assert_eq "1" "$exit_code" "error_handler exits with status"

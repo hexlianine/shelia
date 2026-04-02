@@ -4,26 +4,15 @@
 [[ -n "${__SHELIA_LIB_SHELL_LOADED:-}" ]] && return 0
 __SHELIA_LIB_SHELL_LOADED=1
 
+# Version check: shell.sh requires Bash 4.0+ (for printf -v, set -E)
+# shellcheck source=./bootstrap.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/bootstrap.sh"
+shelia::bootstrap::require_bash_version "shell.sh" "$__SHELIA_BASH_SHELL_MIN_MAJOR" "$__SHELIA_BASH_SHELL_MIN_MINOR"
+
 set -e
 set -u
 set -o pipefail
 set -E
-
-# shellcheck source=./logging.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/logging.sh"
-
-# Detects whether the current shell is Bash.
-# Behavior:
-#   - Returns success (exit 0) when BASH_VERSION is set.
-#   - Returns failure (exit 1) otherwise.
-#
-# Usage:
-#   if shelia::shell::is_bash; then
-#     ...
-#   fi
-function shelia::shell::is_bash() {
-  [[ -n "${BASH_VERSION:-}" ]]
-}
 
 # Prints a function name from the Bash call stack (FUNCNAME).
 # Details:
@@ -61,10 +50,10 @@ function shelia::shell::begin_module() {
     return 1
   fi
   case "$mid" in
-    '' | *[!A-Z0-9_]*)
-      printf '%s: invalid module id %q\n' "$(shelia::shell::function_name)" "$mid" >&2
-      return 1
-      ;;
+  '' | *[!A-Z0-9_]*)
+    printf '%s: invalid module id %q\n' "$(shelia::shell::function_name)" "$mid" >&2
+    return 1
+    ;;
   esac
   local varname="__SHELIA_LIB_${mid}_LOADED"
   if [[ -n "${!varname:-}" ]]; then
@@ -74,28 +63,20 @@ function shelia::shell::begin_module() {
   return 0
 }
 
-# Verifies that the script is running under Bash 4.3 or newer.
-# On failure:
-#   - Exits via shelia::logging::error if BASH_VERSION is unset (not Bash).
-#   - Exits if the major/minor version is below 4.3.
+# shellcheck source=./logging.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/logging.sh"
+
+# Detects whether the current shell is Bash.
+# Behavior:
+#   - Returns success (exit 0) when BASH_VERSION is set.
+#   - Returns failure (exit 1) otherwise.
 #
 # Usage:
-#   shelia::shell::check_bash_version
-function shelia::shell::check_bash_version() {
-  local required_smallest_version="4.3"
-
-  if [ -z "${BASH_VERSION:-}" ]; then
-    shelia::logging::error "This script requires Bash shell to run. Please execute it with bash."
-    exit 1
-  fi
-
-  if [[ "${BASH_VERSINFO[0]}" -lt "${required_smallest_version%%.*}" ]] ||
-    { [[ "${BASH_VERSINFO[0]}" -eq "${required_smallest_version%%.*}" ]] &&
-      [[ "${BASH_VERSINFO[1]}" -lt "${required_smallest_version##*.}" ]]; }; then
-    shelia::logging::error "This script requires Bash version $required_smallest_version or later. " \
-      "Current version: ${BASH_VERSION}."
-    exit 1
-  fi
+#   if shelia::shell::is_bash; then
+#     ...
+#   fi
+function shelia::shell::is_bash() {
+  [[ -n "${BASH_VERSION:-}" ]]
 }
 
 # Ensures each named executable exists on PATH before proceeding.
@@ -273,19 +254,19 @@ function shelia::shell::prompt_yes_no() {
     fi
 
     case "${response,,}" in
-      y|yes)
-        return 0
-        ;;
-      n|no)
-        return 1
-        ;;
-      *)
-        if [[ -w /dev/tty ]] 2>/dev/null; then
-          echo "Please answer 'y' or 'n'." >/dev/tty
-        else
-          echo "Please answer 'y' or 'n'."
-        fi
-        ;;
+    y | yes)
+      return 0
+      ;;
+    n | no)
+      return 1
+      ;;
+    *)
+      if [[ -w /dev/tty ]] 2>/dev/null; then
+        echo "Please answer 'y' or 'n'." >/dev/tty
+      else
+        echo "Please answer 'y' or 'n'."
+      fi
+      ;;
     esac
   done
 }

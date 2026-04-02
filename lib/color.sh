@@ -3,7 +3,11 @@
 
 # shellcheck source=./shell.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shell.sh"
+
+# Version check: color.sh requires Bash 3.0+ (inherits shell.sh dependency)
+shelia::bootstrap::require_bash_version "color.sh" "$__SHELIA_BASH_COLOR_MIN_MAJOR" "$__SHELIA_BASH_COLOR_MIN_MINOR"
 shelia::shell::begin_module COLOR || return 0
+
 SUCCESS_COLOR_TAG="\e[32m"
 FAILURE_COLOR_TAG="\e[31m"
 WARNING_COLOR_TAG="\e[33m"

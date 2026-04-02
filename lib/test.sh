@@ -6,6 +6,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/logging.sh"
 
 # shellcheck source=./shell.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shell.sh"
+
+# Version check: test.sh requires Bash 3.0+ (inherits shell.sh dependency)
+shelia::bootstrap::require_bash_version "test.sh" "$__SHELIA_BASH_TEST_MIN_MAJOR" "$__SHELIA_BASH_TEST_MIN_MINOR"
 shelia::shell::begin_module TEST_HELPERS || return 0
 
 function shelia::test::init() {

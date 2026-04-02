@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1. Source the Shelia library
 # This loads all modules: logging, color, git, maven, shell, and workspace.
@@ -18,7 +18,7 @@ echo -e "Or even $(shelia::color::success "success") and $(shelia::color::failur
 shelia::logging::banner "Shelia Maven Example"
 # This will resolve and check if your ~/.m2/settings.xml exists
 # (It might fail if you don't have Maven installed, which is fine for an example)
-if command -v mvn &> /dev/null; then
+if command -v mvn &>/dev/null; then
   shelia::maven::resolve_maven_settings_file
   shelia::logging::info "Resolved Maven settings at: $SHELIA_MAVEN_SETTINGS_FILE"
 else

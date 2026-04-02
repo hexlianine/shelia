@@ -3,6 +3,9 @@
 
 # shellcheck source=./shell.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shell.sh"
+
+# Version check: workspace.sh requires Bash 3.0+ (inherits shell.sh dependency)
+shelia::bootstrap::require_bash_version "workspace.sh" "$__SHELIA_BASH_WORKSPACE_MIN_MAJOR" "$__SHELIA_BASH_WORKSPACE_MIN_MINOR"
 shelia::shell::begin_module WORKSPACE || return 0
 # shellcheck source=./git.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/git.sh"

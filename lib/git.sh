@@ -3,6 +3,9 @@
 
 # shellcheck source=./shell.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shell.sh"
+
+# Version check: git.sh requires Bash 3.0+ (inherits shell.sh dependency)
+shelia::bootstrap::require_bash_version "git.sh" "$__SHELIA_BASH_GIT_MIN_MAJOR" "$__SHELIA_BASH_GIT_MIN_MINOR"
 shelia::shell::begin_module GIT || return 0
 
 # Example: Customizing git protections and remote configuration with shelia::git::init
@@ -60,35 +63,35 @@ function shelia::git::init() {
     value="${key_value#*=}"
 
     case "$key" in
-      SHELIA_GIT_PROTECTED_BRANCHES_REGEX)
-        SHELIA_GIT_PROTECTED_BRANCHES_REGEX="$value"
-        ;;
-      SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES)
-        if [[ "$value" != true ]] && [[ "$value" != false ]]; then
-          shelia::logging::error \
-            "Invalid value for SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES: '$value'. Use true|false."
-          return 1
-        fi
-        SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES="$value"
-        ;;
-      SHELIA_GIT_ENABLE_DELETE_PROTECTED_BRANCHES)
-        if [[ "$value" != true ]] && [[ "$value" != false ]]; then
-          shelia::logging::error \
-            "Invalid value for SHELIA_GIT_ENABLE_DELETE_PROTECTED_BRANCHES: '$value'. Use true|false."
-          return 1
-        fi
-        SHELIA_GIT_ENABLE_DELETE_PROTECTED_BRANCHES="$value"
-        ;;
-      SHELIA_GIT_PROTECTED_BRANCHES_ENABLE_TO_DELETE_REGEX)
-        SHELIA_GIT_PROTECTED_BRANCHES_ENABLE_TO_DELETE_REGEX="$value"
-        ;;
-      SHELIA_GIT_REMOTE_PROVIDER_NAME)
-        SHELIA_GIT_REMOTE_PROVIDER_NAME="$value"
-        ;;
-      *)
-        shelia::logging::error "Unknown git init parameter key: '$key'."
+    SHELIA_GIT_PROTECTED_BRANCHES_REGEX)
+      SHELIA_GIT_PROTECTED_BRANCHES_REGEX="$value"
+      ;;
+    SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES)
+      if [[ "$value" != true ]] && [[ "$value" != false ]]; then
+        shelia::logging::error \
+          "Invalid value for SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES: '$value'. Use true|false."
         return 1
-        ;;
+      fi
+      SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES="$value"
+      ;;
+    SHELIA_GIT_ENABLE_DELETE_PROTECTED_BRANCHES)
+      if [[ "$value" != true ]] && [[ "$value" != false ]]; then
+        shelia::logging::error \
+          "Invalid value for SHELIA_GIT_ENABLE_DELETE_PROTECTED_BRANCHES: '$value'. Use true|false."
+        return 1
+      fi
+      SHELIA_GIT_ENABLE_DELETE_PROTECTED_BRANCHES="$value"
+      ;;
+    SHELIA_GIT_PROTECTED_BRANCHES_ENABLE_TO_DELETE_REGEX)
+      SHELIA_GIT_PROTECTED_BRANCHES_ENABLE_TO_DELETE_REGEX="$value"
+      ;;
+    SHELIA_GIT_REMOTE_PROVIDER_NAME)
+      SHELIA_GIT_REMOTE_PROVIDER_NAME="$value"
+      ;;
+    *)
+      shelia::logging::error "Unknown git init parameter key: '$key'."
+      return 1
+      ;;
     esac
   done
 }
@@ -103,8 +106,8 @@ shelia::git::init || return 1
 # @return 0 if allowed, 1 if protected and creation is disabled.
 function shelia::git::assert_branch_name_not_allow_created() {
   local branch_name="$1"
-  if [[ "$branch_name" =~ $SHELIA_GIT_PROTECTED_BRANCHES_REGEX ]] && \
-     [[ "$SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES" == false ]]; then
+  if [[ "$branch_name" =~ $SHELIA_GIT_PROTECTED_BRANCHES_REGEX ]] &&
+    [[ "$SHELIA_GIT_ENABLE_CREATE_PROTECTED_BRANCHES" == false ]]; then
     shelia::logging::error "Branch '$branch_name' is protected and cannot be created. " \
       "Please use a different branch name."
     return 1
@@ -248,8 +251,8 @@ function shelia::git::delete_branch() {
     shelia::logging::info "Local branch $branch_name does not exist"
   fi
 
-  if git ls-remote --heads "${SHELIA_GIT_REMOTE_PROVIDER_NAME}" "$branch_name" | \
-     grep "$branch_name"; then
+  if git ls-remote --heads "${SHELIA_GIT_REMOTE_PROVIDER_NAME}" "$branch_name" |
+    grep "$branch_name"; then
     if ! git push "${SHELIA_GIT_REMOTE_PROVIDER_NAME}" --delete "$branch_name"; then
       shelia::logging::error "Failed to delete remote branch '$branch_name'. " \
         "The server may reject deletion (e.g. default branch, protected branch, " \
@@ -304,8 +307,8 @@ function shelia::git::safe_checkout() {
     fi
   else
     shelia::logging::info "Checking out branch '$branch_name' from '$source_branch'"
-    if ! git checkout "$source_branch" || \
-       ! git pull; then
+    if ! git checkout "$source_branch" ||
+      ! git pull; then
       shelia::logging::error "Failed to pull latest changes from branch '$source_branch'. " \
         "Please ensure the branch exists and you have proper permissions."
       exit 1
@@ -331,10 +334,10 @@ function shelia::git::safe_checkout() {
     exit 1
   fi
 
-  if git ls-remote --heads "${SHELIA_GIT_REMOTE_PROVIDER_NAME}" "$branch_name" | \
-     grep "$branch_name"; then
-    if [[ "$pull_updates" == true ]] && \
-       ! git pull; then
+  if git ls-remote --heads "${SHELIA_GIT_REMOTE_PROVIDER_NAME}" "$branch_name" |
+    grep "$branch_name"; then
+    if [[ "$pull_updates" == true ]] &&
+      ! git pull; then
       shelia::logging::error "Failed to pull latest changes from branch '$branch_name'. " \
         "Please check your network connection and repository access."
       exit 1

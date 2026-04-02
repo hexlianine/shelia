@@ -3,6 +3,9 @@
 
 # shellcheck source=./shell.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shell.sh"
+
+# Version check: maven.sh requires Bash 3.0+ (inherits shell.sh dependency)
+shelia::bootstrap::require_bash_version "maven.sh" "$__SHELIA_BASH_MAVEN_MIN_MAJOR" "$__SHELIA_BASH_MAVEN_MIN_MINOR"
 shelia::shell::begin_module MAVEN || return 0
 # shellcheck source=./git.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/git.sh"
@@ -137,9 +140,9 @@ function shelia::maven::maven_install() {
       exit 1
     fi
   else
-    if mvn clean install -N -U -s "$SHELIA_MAVEN_SETTINGS_FILE" && \
-       mvn clean install -pl "${module_name}" -T 1C -Dmaven.test.skip \
-         -DskipTests -U -s "$SHELIA_MAVEN_SETTINGS_FILE"; then
+    if mvn clean install -N -U -s "$SHELIA_MAVEN_SETTINGS_FILE" &&
+      mvn clean install -pl "${module_name}" -T 1C -Dmaven.test.skip \
+        -DskipTests -U -s "$SHELIA_MAVEN_SETTINGS_FILE"; then
       shelia::logging::info "Successfully installed ${project_name}-${module_name} " \
         "${branch_name} ${target_version}"
     else
@@ -181,9 +184,9 @@ function shelia::maven::maven_deploy() {
       exit 1
     fi
   else
-    if mvn clean deploy -N -U -s "$SHELIA_MAVEN_SETTINGS_FILE" && \
-       mvn clean deploy -pl "${module_name}" -T 1C -Dmaven.test.skip \
-         -DskipTests -U -s "$SHELIA_MAVEN_SETTINGS_FILE"; then
+    if mvn clean deploy -N -U -s "$SHELIA_MAVEN_SETTINGS_FILE" &&
+      mvn clean deploy -pl "${module_name}" -T 1C -Dmaven.test.skip \
+        -DskipTests -U -s "$SHELIA_MAVEN_SETTINGS_FILE"; then
       shelia::logging::info "Successfully deployed ${project_name}-${module_name} " \
         "${branch_name} ${target_version}"
     else
