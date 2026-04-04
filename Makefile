@@ -1,7 +1,24 @@
-.PHONY: test lint deps format format-check
+.PHONY: test lint deps format format-check run
 
 test:
 	env bash tests/run.sh
+
+# Run the example usage script or a specified script/method.
+# Usage:
+#   make run                          -> Run default example_usage.sh
+#   make run script=path/to/script.sh -> Run a specific script
+#   make run method=my_func           -> Run a function from universe.sh
+#   make run script=lib.sh method=foo -> Run a function from a specific library
+#   make run args="arg1 arg2"         -> Pass arguments to script or method
+run:
+	@if [ -n "$(method)" ]; then \
+		script=$${script:-universe.sh}; \
+		env bash -c "source $$script && $(method) $(args)"; \
+	elif [ -n "$(script)" ]; then \
+		env bash "$(script)" $(args); \
+	else \
+		env bash example_usage.sh $(args); \
+	fi
 
 lint:
 	@command -v shellcheck >/dev/null 2>&1 || { \
