@@ -39,6 +39,9 @@ readonly __SHELIA_BASH_TEST_MIN_MINOR=0
 readonly __SHELIA_BASH_WORKSPACE_MIN_MAJOR=3
 readonly __SHELIA_BASH_WORKSPACE_MIN_MINOR=0
 
+readonly __SHELIA_BASH_HTTP_MIN_MAJOR=3
+readonly __SHELIA_BASH_HTTP_MIN_MINOR=0
+
 # Checks if the current Bash version meets the specified minimum requirements.
 # @param $1 required_major - Minimum major version required.
 # @param $2 required_minor - Minimum minor version required.

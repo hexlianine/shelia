@@ -23,5 +23,7 @@ source "${__SHELIA_HOME}/lib/maven.sh"
 source "${__SHELIA_HOME}/lib/color.sh"
 # shellcheck source=lib/workspace.sh
 source "${__SHELIA_HOME}/lib/workspace.sh"
+# shellcheck source=lib/http.sh
+source "${__SHELIA_HOME}/lib/http.sh"
 
 unset __SHELIA_HOME
